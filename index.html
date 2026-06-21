@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>翻译指挥官作战室 — 翻译决策地图</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:#f7f6f3;
+  color:#1a1a1a;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  padding:24px 16px;
+}
+.app{max-width:680px;width:100%}
+
+/* Progress bar */
+.pbar{display:flex;gap:4px;margin-bottom:1.5rem}
+.pd{height:4px;flex:1;border-radius:2px;background:#e0ded8;transition:background .3s}
+.pd.on{background:#378ADD}
+.pd.dn{background:#639922}
+
+/* Steps */
+.step{display:none;animation:fadeIn .3s ease}
+.step.show{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Card */
+.cd{background:#fff;border:1px solid #e8e6e1;border-radius:12px;padding:1.25rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+
+/* Typography */
+.sh{font-size:16px;font-weight:600;margin-bottom:6px;color:#1a1a1a}
+.ss{font-size:13px;color:#6b6966;line-height:1.7;margin-bottom:1rem}
+
+/* Zone cards */
+.zc{border-left:3px solid;border-radius:0 8px 8px 0;padding:1rem 1.25rem;margin-bottom:12px;background:#fafaf8}
+.zc-g{border-left-color:#639922}
+.zc-y{border-left-color:#BA7517}
+.zc-r{border-left-color:#E24B4A}
+.zb{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:8px;font-size:13px;font-weight:600}
+.zb-g{background:#EAF3DE;color:#3B6D11}
+.zb-y{background:#FAEEDA;color:#854F0B}
+.zb-r{background:#FCEBEB;color:#A32D2D}
+.zd{font-size:13px;color:#6b6966;line-height:1.7;margin-top:8px}
+
+/* Demo box */
+.db{background:#fafaf8;border-radius:8px;padding:1rem;margin:12px 0;border:1px solid #e8e6e1}
+.hl{padding:3px 8px;border-radius:5px;cursor:pointer;transition:all .2s;font-weight:600;display:inline;border:none;background:none}
+.hl:hover{filter:brightness(1.05);transform:scale(1.02)}
+.hl.sel{outline:2px solid #378ADD;outline-offset:2px}
+.hl-g{background:#EAF3DE;color:#3B6D11}
+.hl-y{background:#FAEEDA;color:#854F0B}
+.hl-r{background:#FCEBEB;color:#A32D2D}
+
+/* Tooltip */
+.tip{font-size:13px;line-height:1.7;color:#6b6966;padding:12px 14px;background:#fff;border:1px solid #d4d2cc;border-radius:8px;margin-top:10px;display:none}
+.tip.show{display:block;animation:fadeIn .25s ease}
+.tg{color:#639922;font-weight:600;margin-bottom:4px;font-size:13px}
+.ty{color:#BA7517;font-weight:600;margin-bottom:4px;font-size:13px}
+.tr{color:#E24B4A;font-weight:600;margin-bottom:4px;font-size:13px}
+
+/* Quiz buttons */
+.qb{
+  display:block;width:100%;
+  padding:12px 16px;
+  border:1px solid #e8e6e1;
+  border-radius:8px;
+  font-size:13px;line-height:1.6;
+  cursor:pointer;transition:all .2s;
+  background:#fff;text-align:left;
+  margin-bottom:8px;
+  font-family:inherit;color:#1a1a1a;
+}
+.qb:hover{background:#fafaf8;border-color:#d4d2cc}
+.qb.yes{border-color:#639922;background:#EAF3DE;color:#3B6D11;pointer-events:none;font-weight:500}
+.qb.no{border-color:#E24B4A;background:#FCEBEB;color:#A32D2D;pointer-events:none}
+.qb.dim{pointer-events:none;opacity:.45}
+
+/* Quiz explanation */
+.qe{font-size:13px;color:#6b6966;line-height:1.7;margin-top:8px;padding:12px 14px;background:#fafaf8;border-radius:8px;display:none;border:1px solid #e8e6e1}
+.qe.show{display:block;animation:fadeIn .25s ease}
+
+/* Navigation */
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem}
+.nav button{
+  padding:8px 18px;
+  border:1px solid #d4d2cc;
+  border-radius:8px;
+  background:#fff;
+  color:#1a1a1a;
+  font-size:13px;
+  cursor:pointer;
+  transition:all .15s;
+  font-family:inherit;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.nav button:hover{background:#fafaf8;border-color:#b4b2a9}
+.nav button:active{transform:scale(.97)}
+
+/* Example number badge */
+.en{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;border-radius:50%;
+  background:#E6F1FB;color:#185FA5;
+  font-size:12px;font-weight:600;margin-right:6px;
+}
+
+/* Score */
+.sbig{font-size:40px;font-weight:600;text-align:center;margin:1rem 0;color:#1a1a1a}
+.slab{font-size:14px;color:#6b6966;text-align:center;line-height:1.6}
+
+/* Icons (simple SVG replacements) */
+.icon{display:inline-block;width:18px;height:18px;vertical-align:-3px;margin-right:4px}
+.icon-radar{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23378ADD' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='6'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Cline x1='12' y1='2' x2='12' y2='6'/%3E%3C/svg%3E") center/contain no-repeat}
+.icon-map{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23378ADD' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6'/%3E%3Cline x1='8' y1='2' x2='8' y2='18'/%3E%3Cline x1='16' y1='6' x2='16' y2='22'/%3E%3C/svg%3E") center/contain no-repeat}
+.icon-target{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23378ADD' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='6'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3C/svg%3E") center/contain no-repeat}
+.icon-trophy{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23639922' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6'/%3E%3Cpath d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18'/%3E%3Cpath d='M4 22h16'/%3E%3Cpath d='M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22'/%3E%3Cpath d='M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22'/%3E%3Cpath d='M18 2H6v7a6 6 0 0 0 12 0V2Z'/%3E%3C/svg%3E") center/contain no-repeat}
+.icon-retry{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23BA7517' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 2v6h-6'/%3E%3Cpath d='M3 12a9 9 0 0 1 15-6.7L21 8'/%3E%3Cpath d='M3 22v-6h6'/%3E%3Cpath d='M21 12a9 9 0 0 1-15 6.7L3 16'/%3E%3C/svg%3E") center/contain no-repeat}
+.arrow-r{display:inline-block;margin-left:2px}
+.arrow-l{display:inline-block;margin-right:2px}
+
+/* Mobile tweaks */
+@media(max-width:480px){
+  body{padding:16px 10px}
+  .cd{padding:1rem}
+  .nav button{padding:8px 12px;font-size:12px}
+  .sbig{font-size:32px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div id="pbar" class="pbar"></div>
+
+<!-- STEP 0: Intro -->
+<div class="step show" id="s0">
+<div class="cd" style="text-align:center;padding:2rem 1.5rem">
+<div style="width:48px;height:48px;margin:0 auto 16px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center">
+  <span class="icon icon-radar" style="width:24px;height:24px;margin:0"></span>
+</div>
+<div style="font-size:20px;font-weight:600;margin-bottom:10px">翻译指挥官作战室</div>
+<div class="ss" style="margin-bottom:1.5rem;font-size:14px">在人机协同时代，翻译工作不再是「一个人从头译到尾」。<br>你的新身份：<strong>翻译项目的决策指挥官</strong>。</div>
+<div style="text-align:left;line-height:2;font-size:14px;color:#6b6966">
+想象你是一位战场指挥官，面前有三种任务：<br><br>
+<span style="color:#639922;font-weight:600">&#9679; 常规巡逻</span> &#8212; 放心交给无人机（AI）自动完成<br><br>
+<span style="color:#BA7517;font-weight:600">&#9679; 雷达引导</span> &#8212; 你在指挥室用雷达引导飞行员，人机配合<br><br>
+<span style="color:#E24B4A;font-weight:600">&#9679; 亲自上阵</span> &#8212; AI压根「看不懂」战场，必须你自己开路<br><br>
+接下来，我们用「翻译决策地图」学会分辨这三种任务。
+</div>
+</div>
+<div class="nav"><span></span><button onclick="go(1)">开始探索 <span class="arrow-r">&#8594;</span></button></div>
+</div>
+
+<!-- STEP 1: Zones -->
+<div class="step" id="s1">
+<div class="sh"><span class="icon icon-map"></span>三色决策区总览</div>
+<div class="ss">每段待译文本，都可以按「AI能不能搞定」划入以下三个区：</div>
+
+<div class="zc zc-g">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="zb zb-g">&#9989; 绿区</span><span style="font-size:13px;color:#6b6966">AI可独立处理</span></div>
+<div class="zd">程式化外交套语，如「持久和平」「普遍安全」「开放包容」。有固定标准译法，AI查得到、译得对。<br><strong>类比</strong>：GPS导航走高速——路线固定，跟着走就行。</div>
+</div>
+
+<div class="zc zc-y">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="zb zb-y">&#9888;&#65039; 黄区</span><span style="font-size:13px;color:#6b6966">人机协同</span></div>
+<div class="zd">政治术语和规范表达，如「人类命运共同体」「新型国际关系」。AI能给出大致译法，但术语一致性可能不稳定，需人工核查。<br><strong>类比</strong>：GPS导航走山路——大方向对，但拐弯处你得自己判断。</div>
+</div>
+
+<div class="zc zc-r">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="zb zb-r">&#128680; 红区</span><span style="font-size:13px;color:#6b6966">人工主导</span></div>
+<div class="zd">涉及文化意象、成语典故或深层源语理解，如「同舟共济」「与古为新」。<br><strong style="color:#A32D2D">红区之所以红，不是因为俄语难写，而是AI读不透中文原文的深层含义。</strong><br><strong>类比</strong>：GPS压根不知道这条路存在——你得自己开路。</div>
+</div>
+
+<div class="nav"><button onclick="go(0)"><span class="arrow-l">&#8592;</span> 返回</button><button onclick="go(2)">看示例 <span class="arrow-r">&#8594;</span></button></div>
+</div>
+
+<!-- STEP 2: Demo 1 -->
+<div class="step" id="s2">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="en">1</span><span class="sh" style="margin:0">外交演讲片段</span></div>
+<div class="ss">&#128073; 点击下方高亮词语，查看它属于哪个决策区</div>
+<div class="db">
+<div style="font-size:15px;line-height:2.4">
+我们应该推动构建<span class="hl hl-y" onclick="showTip('s2',0)">人类命运共同体</span>，实现<span class="hl hl-g" onclick="showTip('s2',1)">持久和平</span>、<span class="hl hl-g" onclick="showTip('s2',2)">普遍安全</span>、<span class="hl hl-g" onclick="showTip('s2',3)">共同繁荣</span>。
+</div>
+<div class="tip" id="s2-t0"><div class="ty">黄区 — 人机协同</div>「人类命运共同体」是核心政治术语。AI可能在 единая / общая 之间不稳定，你需要核查术语表，确认一致性。</div>
+<div class="tip" id="s2-t1"><div class="tg">绿区 — AI可独立处理</div>「持久和平」= долгосрочный мир，标准外交套语，AI几乎不会出错。</div>
+<div class="tip" id="s2-t2"><div class="tg">绿区 — AI可独立处理</div>「普遍安全」= всеобщая безопасность，同样是固定搭配，无悬念。</div>
+<div class="tip" id="s2-t3"><div class="tg">绿区 — AI可独立处理</div>「共同繁荣」= совместное процветание，套语无悬念。</div>
+</div>
+<div class="nav"><button onclick="go(1)"><span class="arrow-l">&#8592;</span> 返回</button><button onclick="go(3)">示例 2 <span class="arrow-r">&#8594;</span></button></div>
+</div>
+
+<!-- STEP 3: Demo 2 -->
+<div class="step" id="s3">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="en">2</span><span class="sh" style="margin:0">含成语的外交表述</span></div>
+<div class="ss">&#128073; 点击下方高亮词语，查看它属于哪个决策区</div>
+<div class="db">
+<div style="font-size:15px;line-height:2.4">
+面对挑战，各国应<span class="hl hl-r" onclick="showTip('s3',0)">同舟共济</span>，携手构建<span class="hl hl-y" onclick="showTip('s3',1)">新型国际关系</span>，实现<span class="hl hl-g" onclick="showTip('s3',2)">开放包容</span>的世界。
+</div>
+<div class="tip" id="s3-t0"><div class="tr">红区 — 人工主导</div>「同舟共济」是成语。AI可能直译为 плывя в одной лодке（坐在同一条船上），听起来像童话故事，完全丧失外交庄重感。你需要意译为 помогая друг другу в общем деле（在共同事业中互相帮助）。</div>
+<div class="tip" id="s3-t1"><div class="ty">黄区 — 人机协同</div>「新型国际关系」= международные отношения нового типа。AI大致知道译法，但需核查是否与本文其他地方术语统一。</div>
+<div class="tip" id="s3-t2"><div class="tg">绿区 — AI可独立处理</div>「开放包容」= открытость и инклюзивность，标准表达，AI能正确处理。</div>
+</div>
+<div class="nav"><button onclick="go(2)"><span class="arrow-l">&#8592;</span> 返回</button><button onclick="go(4)">示例 3 <span class="arrow-r">&#8594;</span></button></div>
+</div>
+
+<!-- STEP 4: Demo 3 -->
+<div class="step" id="s4">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="en">3</span><span class="sh" style="margin:0">文化意象密集段落</span></div>
+<div class="ss">&#128073; 点击下方高亮词语，查看它属于哪个决策区</div>
+<div class="db">
+<div style="font-size:15px;line-height:2.4">
+中华文明历来倡导<span class="hl hl-r" onclick="showTip('s4',0)">与古为新</span>，坚持<span class="hl hl-r" onclick="showTip('s4',1)">和而不同</span>，追求<span class="hl hl-g" onclick="showTip('s4',2)">合作共赢</span>的理念。
+</div>
+<div class="tip" id="s4-t0"><div class="tr">红区 — 人工主导</div>「与古为新」出自书法理论，意思是从传统中汲取灵感、创造新事物。AI几乎一定会硬译或跳过。你需要深入理解源语含义后才能找到恰当的俄语表达。</div>
+<div class="tip" id="s4-t1"><div class="tr">红区 — 人工主导</div>「和而不同」出自《论语》，表达保持差异性前提下的和谐共处。AI可能译成 гармония в разнообразии，但是否准确传达了儒家原意，需要你来判断。</div>
+<div class="tip" id="s4-t2"><div class="tg">绿区 — AI可独立处理</div>「合作共赢」= взаимовыгодное сотрудничество，常见外交套语，AI能准确处理。</div>
+</div>
+<div class="nav"><button onclick="go(3)"><span class="arrow-l">&#8592;</span> 返回</button><button onclick="go(5)">进入测试 <span class="arrow-r">&#8594;</span></button></div>
+</div>
+
+<!-- STEP 5: Quiz -->
+<div class="step" id="s5">
+<div style="font-size:15px;font-weight:600;margin-bottom:16px"><span class="icon icon-target"></span>实战测试（5题，答对4题通关）</div>
+
+<div class="cd" id="q0box">
+<div style="font-size:12px;color:#185FA5;font-weight:600;margin-bottom:6px;text-transform:uppercase">第 1 题</div>
+<div style="font-size:14px;font-weight:600;margin-bottom:14px;line-height:1.7">「推动构建人类命运共同体」中的「人类命运共同体」属于哪个决策区？</div>
+<button class="qb" onclick="pick(0,0)">A. 绿区 — AI可独立处理</button>
+<button class="qb" onclick="pick(0,1)">B. 黄区 — 人机协同</button>
+<button class="qb" onclick="pick(0,2)">C. 红区 — 人工主导</button>
+<div class="qe" id="q0e">&#9989; 正确答案：<strong>B. 黄区</strong><br>这是政治术语，有标准译法 сообщество единой судьбы человечества，但AI可能在 единая 和 общая 之间不稳定，需要人工核查术语一致性。</div>
+</div>
+
+<div class="cd" id="q1box">
+<div style="font-size:12px;color:#185FA5;font-weight:600;margin-bottom:6px">第 2 题</div>
+<div style="font-size:14px;font-weight:600;margin-bottom:14px;line-height:1.7">「持久和平、普遍安全、共同繁荣」属于哪个决策区？</div>
+<button class="qb" onclick="pick(1,0)">A. 绿区 — AI可独立处理</button>
+<button class="qb" onclick="pick(1,1)">B. 黄区 — 人机协同</button>
+<button class="qb" onclick="pick(1,2)">C. 红区 — 人工主导</button>
+<div class="qe" id="q1e">&#9989; 正确答案：<strong>A. 绿区</strong><br>程式化外交套语，有现成标准译法（долгосрочный мир, всеобщая безопасность, совместное процветание），AI基本能正确处理。</div>
+</div>
+
+<div class="cd" id="q2box">
+<div style="font-size:12px;color:#185FA5;font-weight:600;margin-bottom:6px">第 3 题</div>
+<div style="font-size:14px;font-weight:600;margin-bottom:14px;line-height:1.7">「同舟共济」属于哪个决策区？</div>
+<button class="qb" onclick="pick(2,0)">A. 绿区 — AI可独立处理</button>
+<button class="qb" onclick="pick(2,1)">B. 黄区 — 人机协同</button>
+<button class="qb" onclick="pick(2,2)">C. 红区 — 人工主导</button>
+<div class="qe" id="q2e">&#9989; 正确答案：<strong>C. 红区</strong><br>成语典故，AI可能直译为 плывя в одной лодке（坐在同一条船上），丧失外交文体庄重感。需人工意译为 помогая друг другу в общем деле。</div>
+</div>
+
+<div class="cd" id="q3box">
+<div style="font-size:12px;color:#185FA5;font-weight:600;margin-bottom:6px">第 4 题（核心诊断题）</div>
+<div style="font-size:14px;font-weight:600;margin-bottom:14px;line-height:1.7">以下哪句话最准确地描述了「红区」难的原因？</div>
+<button class="qb" onclick="pick(3,0)">A. 因为俄语表达太复杂，AI生成的语法有错误</button>
+<button class="qb" onclick="pick(3,1)">B. 因为AI读不透中文原文的深层文化含义，目标语翻译无从谈起</button>
+<button class="qb" onclick="pick(3,2)">C. 因为这类内容没有标准答案，所以AI不知道选哪个</button>
+<div class="qe" id="q3e">&#9989; 正确答案：<strong>B</strong><br>红区之所以红，核心在于<strong>源语理解的深度</strong>，而不仅仅是目标语的难度。AI读不懂中文原文的深层含义，自然译不出好的目标语。</div>
+</div>
+
+<div class="cd" id="q4box">
+<div style="font-size:12px;color:#185FA5;font-weight:600;margin-bottom:6px">第 5 题</div>
+<div style="font-size:14px;font-weight:600;margin-bottom:14px;line-height:1.7">作为翻译决策地图的使用者，你的角色定位是什么？</div>
+<button class="qb" onclick="pick(4,0)">A. AI翻译的纠错员 — 找出AI的错误并修正</button>
+<button class="qb" onclick="pick(4,1)">B. 翻译项目的决策指挥官 — 判断哪些交给AI、哪些自己主导</button>
+<button class="qb" onclick="pick(4,2)">C. AI翻译的使用者 — 用AI提高翻译速度</button>
+<div class="qe" id="q4e">&#9989; 正确答案：<strong>B</strong><br>你不是给AI打补丁的校对员，而是整个翻译项目的总指挥——决定什么交给AI、什么自己上。</div>
+</div>
+
+<div id="score-area" style="display:none">
+<div class="cd" style="text-align:center;padding:2rem">
+<div id="score-icon-box" style="width:56px;height:56px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center"></div>
+<div class="sbig" id="score-num"></div>
+<div class="slab" id="score-msg"></div>
+</div>
+</div>
+
+<div class="nav"><button onclick="go(4)"><span class="arrow-l">&#8592;</span> 返回示例</button><button onclick="resetAll()">&#128260; 重新开始</button></div>
+</div>
+
+<!-- STEP 6 is not needed, results show inline in step 5 -->
+
+</div>
+
+<script>
+var cur = 0;
+var ans = [-1,-1,-1,-1,-1];
+var cor = [1,0,2,1,1];
+var totalSteps = 6;
+
+function go(n) {
+  for (var i = 0; i < totalSteps; i++) {
+    var el = document.getElementById('s' + i);
+    if (el) {
+      el.className = (i === n) ? 'step show' : 'step';
+    }
+  }
+  cur = n;
+  updateBar();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function updateBar() {
+  var pb = document.getElementById('pbar');
+  var h = '';
+  for (var i = 0; i < totalSteps; i++) {
+    var c = 'pd';
+    if (i < cur) c += ' dn';
+    if (i === cur) c += ' on';
+    h += '<div class="' + c + '"></div>';
+  }
+  pb.innerHTML = h;
+}
+
+function showTip(stepId, idx) {
+  var step = document.getElementById(stepId);
+  if (!step) return;
+  var tips = step.querySelectorAll('.tip');
+  for (var i = 0; i < tips.length; i++) {
+    tips[i].className = 'tip';
+  }
+  var t = document.getElementById(stepId + '-t' + idx);
+  if (t) t.className = 'tip show';
+
+  var hls = step.querySelectorAll('.hl');
+  for (var j = 0; j < hls.length; j++) {
+    hls[j].classList.remove('sel');
+  }
+  event.target.classList.add('sel');
+}
+
+function pick(qi, choice) {
+  if (ans[qi] >= 0) return;
+  ans[qi] = choice;
+  var box = document.getElementById('q' + qi + 'box');
+  var btns = box.querySelectorAll('.qb');
+  for (var i = 0; i < btns.length; i++) {
+    if (i === cor[qi]) {
+      btns[i].className = 'qb yes';
+    } else if (i === choice && choice !== cor[qi]) {
+      btns[i].className = 'qb no';
+    } else {
+      btns[i].className = 'qb dim';
+    }
+  }
+  var exp = document.getElementById('q' + qi + 'e');
+  if (exp) exp.className = 'qe show';
+
+  var allDone = true;
+  for (var j = 0; j < 5; j++) {
+    if (ans[j] < 0) { allDone = false; break; }
+  }
+  if (allDone) showScore();
+}
+
+function showScore() {
+  var sc = 0;
+  for (var k = 0; k < 5; k++) {
+    if (ans[k] === cor[k]) sc++;
+  }
+  var area = document.getElementById('score-area');
+  var iconBox = document.getElementById('score-icon-box');
+  var num = document.getElementById('score-num');
+  var msg = document.getElementById('score-msg');
+  num.textContent = sc + ' / 5';
+  if (sc >= 4) {
+    iconBox.style.background = '#EAF3DE';
+    iconBox.innerHTML = '<span class="icon icon-trophy" style="width:28px;height:28px;margin:0"></span>';
+    msg.textContent = '通关成功！你已具备指挥官的基本判断力。';
+  } else {
+    iconBox.style.background = '#FAEEDA';
+    iconBox.innerHTML = '<span class="icon icon-retry" style="width:28px;height:28px;margin:0"></span>';
+    msg.textContent = '还差一点，再回顾一下三区的区别吧。';
+  }
+  area.style.display = 'block';
+  setTimeout(function(){
+    area.scrollIntoView({behavior:'smooth',block:'center'});
+  }, 200);
+}
+
+function resetAll() {
+  ans = [-1,-1,-1,-1,-1];
+  for (var i = 0; i < 5; i++) {
+    var box = document.getElementById('q' + i + 'box');
+    var btns = box.querySelectorAll('.qb');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].className = 'qb';
+    }
+    var exp = document.getElementById('q' + i + 'e');
+    if (exp) exp.className = 'qe';
+  }
+  document.getElementById('score-area').style.display = 'none';
+  go(0);
+}
+
+updateBar();
+</script>
+</body>
+</html>
